@@ -4,31 +4,42 @@ import os
 
 app = Flask(__name__)
 
-# Acá el servidor busca tu llave secreta escondida en las variables de entorno
+# Conexión segura con tu clave oculta
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Servidor de Auro AI activo y listo.", 200
+    return "Motor de Automatización Auro AI v2 Activo.", 200
 
-@app.route("/generate", methods=["POST"])
-def generate():
+@app.route("/chat", methods=["POST"])
+def chat():
     data = request.json
     if not data or "prompt" not in data:
-        return jsonify({"error": "Falta el prompt"}), 400
+        return jsonify({"error": "Falta la instrucción del desarrollador."}), 400
     
     user_prompt = data["prompt"]
+    chat_history = data.get("history", [])  # Recibe la memoria del chat desde Roblox
     is_premium = data.get("is_premium", False)
     
-    # Lógica de monetización: si no tiene el gamepass, el texto no puede ser super largo
-    if not is_premium and len(user_prompt) > 250:
-        return jsonify({"error": "Prompt muy largo para la versión gratuita. ¡Adquiere el pase Premium!"}), 400
+    # Control de abuso para usuarios gratuitos
+    if not is_premium and len(user_prompt) > 500:
+        return jsonify({"error": "Tu instrucción es muy detallada para el plan gratuito. ¡Consigue el pase Premium!"}), 400
 
+    # INSTRUCCIONES MAESTRAS DE CONSTRUCCIÓN AVANZADA
     system_instruction = (
-        "Eres una IA experta en desarrollo de videojuegos para Roblox Studio (Luau). "
-        "Tu único objetivo es devolver el código puro que te pida el usuario. "
-        "NO uses bloques de código con marcas de tres acentos invertidos (```), NO des explicaciones, "
-        "NO digas 'Aquí tienes tu script'. Devuelve ÚNICAMENTE el código ejecutable limpio."
+        "Eres 'Auro AI Engine v2', el motor de inteligencia artificial definitivo integrado en Roblox Studio.\n"
+        "Tu función no es solo escribir código aislado, sino generar un script de Luau que se ejecutará "
+        "DENTRO del plugin para CREAR, DISEÑAR y CONFIGURAR todo lo que el usuario pida de forma interactiva.\n\n"
+        "REGLAS ESTRICTAS DE GENERACIÓN:\n"
+        "1. NO uses marcas de bloques de código (```). Devuelve ÚNICAMENTE el código Luau plano y limpio.\n"
+        "2. Si piden crear una interfaz (UI), genera código usando Instance.new() para crear ScreenGui, Frames, TextLabels, "
+        "botones, etc. Aplica diseños profesionales: esquinas redondeadas (UICorner), colores modernos (gris oscuro, azul eléctrico, blanco texturizado) y colócalos en game.StarterGui.\n"
+        "3. Si piden sistemas mecánicos (como velocidad, monedas, sistemas de guardado), tu script de automatización debe crear un Script o LocalScript, "
+        "asignar su lógica interna a la propiedad .Source del script creado, y ubicarlo en el servicio correspondiente (ServerScriptService, StarterPlayerScripts, etc.).\n"
+        "4. Para actuar sobre lo que el usuario tiene seleccionado actualmente en el Explorador de Studio, usa exactamente esta estructura:\n"
+        "   local selection = game:GetService('Selection'):Get()\n"
+        "   local target = selection[1] or workspace\n"
+        "5. Si piden usar la Toolbox o modelos base, tu código puede instanciar geometrías complejas compuestas o dejar notas estructuradas listas para configurar."
     )
 
     try:
@@ -37,7 +48,18 @@ def generate():
             system_instruction=system_instruction
         )
         
-        response = model.generate_content(user_prompt)
+        # Estructurar el historial en el formato nativo que requiere la IA de Google
+        formatted_contents = []
+        for msg in chat_history:
+            formatted_contents.append({
+                "role": "user" if msg["role"] == "user" else "model",
+                "parts": [msg["text"]]
+            })
+        
+        # Añadir la petición actual al final de la conversación
+        formatted_contents.append({"role": "user", "parts": [user_prompt]})
+        
+        response = model.generate_content(formatted_contents)
         ai_code = response.text.strip()
         
         return jsonify({"code": ai_code}), 200
